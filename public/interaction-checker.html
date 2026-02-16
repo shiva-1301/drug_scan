@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drug-Drug Interaction Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: visible;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+            overflow: visible;
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: visible;
+        }
+
+        @media (max-width: 600px) {
+            .input-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 100;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 600px) {
+            .button-group {
+                grid-column: 1;
+            }
+        }
+
+        button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .check-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .check-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .check-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .clear-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .clear-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result-container {
+            display: none;
+            padding: 30px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-container.success {
+            border-left-color: #4caf50;
+        }
+
+        .result-container.error {
+            border-left-color: #f44336;
+        }
+
+        .result-container.warning {
+            border-left-color: #ff9800;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .result-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-high {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .severity-moderate {
+            background: #ffe0b2;
+            color: #e65100;
+        }
+
+        .severity-low {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .severity-critical {
+            background: #b71c1c;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        /* AI Analysis Card Styles */
+        .ai-analysis-card {
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .ai-analysis-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .ai-analysis-card.unavailable {
+            background: #f5f5f5;
+            border-color: #ffa726;
+        }
+
+        .ai-card {
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .ai-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .ai-card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .ai-card-header .severity-badge {
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        .ai-card-content {
+            padding: 20px;
+        }
+
+        .analysis-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .analysis-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .analysis-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .analysis-value {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .patient-explanation {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e8eaf6;
+        }
+
+        .patient-explanation .analysis-label {
+            color: #5c6bc0;
+        }
+
+        .error-message {
+            padding: 20px;
+            text-align: center;
+            color: #f44336;
+            font-size: 13px;
+        }
+
+        .database-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            border-left: 3px solid #667eea;
+            line-height: 1.6;
+        }
+
+        .message-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+
+        .message-box.success {
+            border-left-color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .message-box.error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+
+        .message-box.info {
+            border-left-color: #2196f3;
+            background: #e3f2fd;
+        }
+
+        .message-text {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .stats {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .example-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .example-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .example-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .error-text {
+            color: #f44336;
+        }
+
+        .success-text {
+            color: #4caf50;
+        }
+
+        .info-text {
+            color: #2196f3;
+        }
+
+        .json-section {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: flex-end;
+            padding: 20px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+
+        @media (max-width: 600px) {
+            .json-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .retrieve-btn {
+            background: #2196f3;
+            color: white;
+            padding: 12px 24px;
+            white-space: nowrap;
+        }
+
+        .retrieve-btn:hover:not(:disabled) {
+            background: #1976d2;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(33, 150, 243, 0.3);
+        }
+
+        .json-output {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            word-break: break-all;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .json-output.show {
+            display: block;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .autocomplete-dropdown {
+            display: none;
+            position: fixed;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 99999;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 350px;
+            min-width: 200px;
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333;
+            transition: background 0.2s ease;
+        }
+
+        .autocomplete-item:hover {
+            background: #f5f5f5;
+        }
+
+        .autocomplete-item.selected {
+            background: #e8eaf6;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .autocomplete-no-match {
+            padding: 15px;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚕️ Drug-Drug Interaction Checker</h1>
+            <p>Check for potential interactions between medications instantly</p>
+        </header>
+
+        <div class="content">
+            <!-- Retrieve Drug JSON Section -->
+            <div class="json-section">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="drugNameInput">Search Drug Data</label>
+                    <input 
+                        type="text" 
+                        id="drugNameInput" 
+                        placeholder="Enter drug name to retrieve JSON data"
+                        autocomplete="off"
+                        oninput="handleAutocomplete(this.value, 'autocompleteDropdown')"
+                    >
+                    <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <button class="retrieve-btn" onclick="retrieveDrugJSON()">📋 Retrieve JSON</button>
+            </div>
+            <div id="jsonOutput" class="json-output"></div>
+
+            <!-- Example Quick Tests -->
+            <div class="example-section">
+                <h3>Try Examples</h3>
+                <div class="example-list">
+                    <button class="example-btn" onclick="setExample('Warfarin', 'Aspirin')">Warfarin + Aspirin</button>
+                    <button class="example-btn" onclick="setExample('Naproxen', 'Warfarin')">Naproxen + Warfarin</button>
+                    <button class="example-btn" onclick="setExample('Lepirudin', 'Aspirin')">Lepirudin + Aspirin</button>
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="currentMed">Current Medication</label>
+                    <input 
+                        type="text" 
+                        id="currentMed" 
+                        placeholder="e.g., Warfarin"
+                        autocomplete="off"
+                        oninput="handleAutocomplete(this.value, 'currentMedDropdown')"
+                    >
+                    <div id="currentMedDropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newDrug">New Drug</label>
+                    <input 
+                        type="text" 
+                        id="newDrug" 
+                        placeholder="e.g., Aspirin"
+                        autocomplete="off"
+                        oninput="handleAutocomplete(this.value, 'newDrugDropdown')"
+                    >
+                    <div id="newDrugDropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <div class="button-group">
+                    <button class="check-btn" id="checkBtn" onclick="checkInteraction()">
+                        ✓ Check Interaction
+                    </button>
+                    <button class="clear-btn" onclick="clearForm()">Clear</button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing interaction...</p>
+            </div>
+
+            <!-- Result Container -->
+            <div id="resultContainer" class="result-container">
+                <div id="resultMessage"></div>
+            </div>
+
+            <!-- Stats -->
+            <div id="stats" class="stats"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        
+        // Autocomplete variables
+        let allDrugNames = [];
+        let selectedIndex = -1;
+
+        // Load all drug names on page load
+        async function loadDrugNames() {
+            try {
+                const response = await fetch(`${API_URL}/drug-names`);
+                if (response.ok) {
+                    const data = await response.json();
+                    allDrugNames = data.drug_names;
+                }
+            } catch (error) {
+                console.log("Could not load drug names for autocomplete");
+            }
+        }
+
+        // Handle autocomplete input
+        function handleAutocomplete(value, dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const inputElement = dropdownId === "autocompleteDropdown" ? 
+                document.getElementById("drugNameInput") : 
+                (dropdownId === "currentMedDropdown" ? 
+                    document.getElementById("currentMed") : 
+                    document.getElementById("newDrug"));
+            
+            if (!value.trim()) {
+                dropdown.classList.remove("show");
+                return;
+            }
+
+            // Position dropdown relative to input
+            const rect = inputElement.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + window.scrollY) + "px";
+            dropdown.style.left = (rect.left + window.scrollX) + "px";
+            dropdown.style.width = rect.width + "px";
+
+            // Filter drug names
+            const filtered = allDrugNames.filter(drug =>
+                drug.toLowerCase().includes(value.toLowerCase())
+            ).slice(0, 10);
+
+            // Build dropdown HTML
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div class="autocomplete-no-match">❌ No matching drug available</div>';
+            } else {
+                dropdown.innerHTML = filtered
+                    .map((drug, i) => `<div class="autocomplete-item" onclick="selectDrug('${drug.replace(/'/g, "\\'")}'  , '${dropdownId}')">${highlightMatch(drug, value)}</div>`)
+                    .join("");
+            }
+
+            dropdown.classList.add("show");
+            selectedIndex = -1;
+        }
+
+        // Highlight matching text
+        function highlightMatch(text, match) {
+            const regex = new RegExp(`(${match})`, "gi");
+            return text.replace(regex, "<strong style='color: #667eea;'>$1</strong>");
+        }
+
+        // Select drug from dropdown
+        function selectDrug(drugName, dropdownId) {
+            // Determine which input field to update
+            let inputId = "drugNameInput";
+            if (dropdownId === "currentMedDropdown") {
+                inputId = "currentMed";
+            } else if (dropdownId === "newDrugDropdown") {
+                inputId = "newDrug";
+            }
+            
+            document.getElementById(inputId).value = drugName;
+            document.getElementById(dropdownId).classList.remove("show");
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", (e) => {
+            if (e.target.id !== "drugNameInput" && e.target.id !== "currentMed" && e.target.id !== "newDrug") {
+                document.getElementById("autocompleteDropdown").classList.remove("show");
+                document.getElementById("currentMedDropdown").classList.remove("show");
+                document.getElementById("newDrugDropdown").classList.remove("show");
+            }
+        });
+
+        // Reposition dropdowns on scroll
+        window.addEventListener("scroll", () => {
+            const dropdowns = ["autocompleteDropdown", "currentMedDropdown", "newDrugDropdown"];
+            const inputs = ["drugNameInput", "currentMed", "newDrug"];
+            
+            dropdowns.forEach((dropdownId, index) => {
+                const dropdown = document.getElementById(dropdownId);
+                if (dropdown.classList.contains("show")) {
+                    const inputElement = document.getElementById(inputs[index]);
+                    const rect = inputElement.getBoundingClientRect();
+                    dropdown.style.top = (rect.bottom + window.scrollY) + "px";
+                    dropdown.style.left = (rect.left + window.scrollX) + "px";
+                    dropdown.style.width = rect.width + "px";
+                }
+            });
+        });
+
+        // Retrieve drug JSON data
+        async function retrieveDrugJSON() {
+            const drugName = document.getElementById("drugNameInput").value.trim();
+            
+            if (!drugName) {
+                alert("Please enter a drug name");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/drug-data?name=${encodeURIComponent(drugName)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Drug not found or error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const jsonOutput = document.getElementById("jsonOutput");
+                
+                jsonOutput.textContent = JSON.stringify(data, null, 2);
+                jsonOutput.classList.add("show");
+            } catch (error) {
+                console.error("Error:", error);
+                const jsonOutput = document.getElementById("jsonOutput");
+                jsonOutput.textContent = `❌ Error: ${error.message}\n\nDrug "${drugName}" not found in database.`;
+                jsonOutput.classList.add("show");
+            }
+        }
+
+        // Set example values
+        function setExample(current, newDrug) {
+            document.getElementById("currentMed").value = current;
+            document.getElementById("newDrug").value = newDrug;
+            checkInteraction();
+        }
+
+        // Clear form
+        function clearForm() {
+            document.getElementById("currentMed").value = "";
+            document.getElementById("newDrug").value = "";
+            document.getElementById("currentMedDropdown").classList.remove("show");
+            document.getElementById("newDrugDropdown").classList.remove("show");
+            document.getElementById("resultContainer").classList.remove("show");
+            document.getElementById("currentMed").focus();
+        }
+
+        // Check interaction
+        async function checkInteraction() {
+            const currentMed = document.getElementById("currentMed").value.trim();
+            const newDrug = document.getElementById("newDrug").value.trim();
+            
+            // Validation
+            if (!currentMed || !newDrug) {
+                showError("Please enter both medications");
+                return;
+            }
+
+            // Show loading
+            document.getElementById("loading").classList.add("show");
+            document.getElementById("resultContainer").classList.remove("show");
+            document.getElementById("checkBtn").disabled = true;
+
+            try {
+                const response = await fetch(`${API_URL}/check-interaction`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        current_med: currentMed,
+                        new_drug: newDrug
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResult(data);
+            } catch (error) {
+                console.error("Error:", error);
+                showError(`Failed to check interaction: ${error.message}`);
+            } finally {
+                document.getElementById("loading").classList.remove("show");
+                document.getElementById("checkBtn").disabled = false;
+            }
+        }
+
+        // Display result
+        function displayResult(data) {
+            const container = document.getElementById("resultContainer");
+            const messageDiv = document.getElementById("resultMessage");
+            
+            if (!data.interaction_found) {
+                // No interaction found
+                container.classList.add("show", "warning");
+                container.classList.remove("success", "error");
+                messageDiv.innerHTML = `
+                    <div class="message-box info">
+                        <div class="result-title">ℹ️ Information</div>
+                        <div class="message-text">${data.message}</div>
+                    </div>
+                `;
+            } else if (data.ai_analysis) {
+                // Interaction found with AI analysis
+                container.classList.add("show", "success");
+                container.classList.remove("warning", "error");
+                
+                const analysis = data.ai_analysis;
+                const severityColor = {
+                    "CRITICAL": "severity-critical",
+                    "HIGH": "severity-high",
+                    "MODERATE": "severity-moderate",
+                    "LOW": "severity-low"
+                }[analysis.severity] || "severity-low";
+                
+                // Check if analysis is unavailable
+                const isUnavailable = !analysis.analysis_available;
+                
+                messageDiv.innerHTML = `
+                    <div class="result-title">⚠️ Drug Interaction Detected</div>
+                    <div class="ai-analysis-card ${isUnavailable ? 'unavailable' : ''}">
+                        <div class="ai-card-header">
+                            <span class="severity-badge ${severityColor}">${analysis.severity || "UNKNOWN"}</span>
+                        </div>
+                        <div class="ai-card-content">
+                            <div class="analysis-item">
+                                <div class="analysis-label">🔬 Mechanism</div>
+                                <div class="analysis-value">${analysis.mechanism || "Not specified"}</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">⚠️ Risk</div>
+                                <div class="analysis-value">${analysis.risk || "Not specified"}</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">💊 Recommended Action</div>
+                                <div class="analysis-value">${analysis.recommended_action || "Consult healthcare provider"}</div>
+                            </div>
+                            ${analysis.patient_explanation ? `
+                                <div class="analysis-item patient-explanation">
+                                    <div class="analysis-label">👤 Patient Information</div>
+                                    <div class="analysis-value">${analysis.patient_explanation}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${data.raw_interaction_text ? `
+                        <div class="database-info">
+                            <strong>📚 Database Reference:</strong><br>
+                            ${data.raw_interaction_text.substring(0, 300)}${data.raw_interaction_text.length > 300 ? '...' : ''}
+                        </div>
+                    ` : ""}
+                `;
+            }
+        }
+
+        // Show error
+        function showError(message) {
+            const container = document.getElementById("resultContainer");
+            const messageDiv = document.getElementById("resultMessage");
+            
+            container.classList.add("show", "error");
+            container.classList.remove("success", "warning");
+            messageDiv.innerHTML = `
+                <div class="message-box error">
+                    <div class="result-title">❌ Error</div>
+                    <div class="message-text error-text">${message}</div>
+                </div>
+            `;
+        }
+
+        // Load stats on page load
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById("stats").innerHTML = `
+                        📊 Database: ${stats.total_drugs.toLocaleString()} drugs loaded | 
+                        Source: ${stats.database}
+                    `;
+                }
+            } catch (error) {
+                console.log("Could not load stats");
+            }
+        }
+
+        // Initialize
+        window.addEventListener("load", () => {
+            document.getElementById("currentMed").focus();
+            loadStats();
+            loadDrugNames();
+        });
+
+        // Enter key to submit
+        document.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                if (e.target.id === "currentMed" || e.target.id === "newDrug") {
+                    checkInteraction();
+                } else if (e.target.id === "drugNameInput") {
+                    retrieveDrugJSON();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

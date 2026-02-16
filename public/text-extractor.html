@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Text Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #fileName {
+            display: inline-block;
+            margin-left: 15px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .result-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .image-panel, .text-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .image-panel h2, .text-panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        #uploadedImage {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .text-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 200px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .result-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .parsed-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .parsed-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .parsed-data {
+            display: grid;
+            gap: 20px;
+        }
+
+        .data-field {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+        }
+
+        .data-field h3 {
+            color: #28a745;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .data-field ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .data-field li {
+            margin: 5px 0;
+            color: #495057;
+        }
+
+        .data-field p {
+            margin: 5px 0;
+            color: #495057;
+        }
+
+        .parsing-status {
+            text-align: center;
+            padding: 15px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .db-search-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .db-search-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .drug-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .drug-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .drug-card.selected {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .drug-card h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .drug-card .generic {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .drug-card .info {
+            color: #495057;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .drug-not-found {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .interaction-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .interaction-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .selected-drug-display {
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        .selected-drug-display strong {
+            color: #28a745;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .current-drugs-input {
+            margin-bottom: 20px;
+        }
+
+        .current-drugs-input label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .current-drugs-input input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        .current-drugs-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .check-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .check-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .check-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .interaction-result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .interaction-result.found {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+
+        .interaction-result.not-found {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .severity-HIGH {
+            background: #dc3545;
+            color: white;
+        }
+
+        .severity-MODERATE {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .severity-LOW {
+            background: #28a745;
+            color: white;
+        }
+
+        .severity-UNKNOWN {
+            background: #6c757d;
+            color: white;
+        }
+
+        .interaction-details {
+            margin-top: 15px;
+            line-height: 1.8;
+        }
+
+        .interaction-details h3 {
+            color: #2c3e50;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .interaction-details p {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📸 Gemini Text Extractor</h1>
+            <p>Upload an image to extract text using AI</p>
+        </header>
+
+        <div class="nav-links">
+            <a href="/interaction-checker.html">🔍 Drug Interaction Checker</a>
+        </div>
+
+        <div class="upload-section">
+            <input type="file" id="imageInput" accept="image/*" hidden>
+            <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                📁 Choose Image
+            </button>
+            <span id="fileName"></span>
+        </div>
+
+        <div id="loadingMessage" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Extracting text from image...</p>
+        </div>
+
+        <div id="resultContainer" class="result-container hidden">
+            <div class="image-panel">
+                <h2>Uploaded Image</h2>
+                <img id="uploadedImage" alt="Uploaded image">
+            </div>
+            
+            <div class="text-panel">
+                <h2>Extracted Text</h2>
+                <div id="extractedText" class="text-content"></div>
+                <button class="copy-btn" onclick="copyText()">📋 Copy Text</button>
+            </div>
+        </div>
+
+        <div id="parsedSection" class="parsed-section hidden">
+            <h2>💊 Parsed Medicine Information</h2>
+            <div id="parsedData" class="parsed-data"></div>
+        </div>
+
+        <div id="dbSearchSection" class="db-search-section hidden">
+            <h2>🔍 Drug Database Search Results</h2>
+            <p style="color: #6c757d; margin-bottom: 15px;">Click on a drug to select it for interaction checking:</p>
+            <div id="dbSearchResults"></div>
+        </div>
+
+        <div id="interactionSection" class="interaction-section hidden">
+            <h2>⚠️ Check Drug Interactions</h2>
+            
+            <div id="selectedDrugDisplay" class="selected-drug-display">
+                <strong>Selected Medicine from Image:</strong>
+                <span id="selectedDrugName">None selected</span>
+            </div>
+
+            <div class="current-drugs-input">
+                <label for="currentDrugInput">Enter your current medication:</label>
+                <input 
+                    type="text" 
+                    id="currentDrugInput" 
+                    placeholder="e.g., Aspirin, Warfarin, Metformin" 
+                    autocomplete="off"
+                />
+                <p style="color: #6c757d; font-size: 14px; margin-top: 5px;">
+                    💡 Tip: Start typing to see suggestions
+                </p>
+            </div>
+
+            <button id="checkInteractionBtn" class="check-btn" disabled>
+                Check Interaction
+            </button>
+
+            <div id="interactionResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const fileName = document.getElementById('fileName');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const extractedText = document.getElementById('extractedText');
+        const parsedSection = document.getElementById('parsedSection');
+        const parsedData = document.getElementById('parsedData');
+        const dbSearchSection = document.getElementById('dbSearchSection');
+        const dbSearchResults = document.getElementById('dbSearchResults');
+        const interactionSection = document.getElementById('interactionSection');
+        const selectedDrugName = document.getElementById('selectedDrugName');
+        const currentDrugInput = document.getElementById('currentDrugInput');
+        const checkInteractionBtn = document.getElementById('checkInteractionBtn');
+        const interactionResult = document.getElementById('interactionResult');
+
+        let selectedDrug = null;
+
+        imageInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+
+            console.log('File selected:', file.name, file.type, file.size, 'bytes');
+            fileName.textContent = file.name;
+
+            // Hide results and show loading
+            resultContainer.classList.add('hidden');
+            loadingMessage.classList.remove('hidden');
+
+            try {
+                console.log('Creating FormData...');
+                const formData = new FormData();
+                formData.append('image', file);
+
+                console.log('Sending POST request to /extract-text...');
+                const response = await fetch('/extract-text', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response received - Status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (data.success) {
+                    // Display the image
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImage.src = e.target.result;
+                        console.log('Image preview loaded');
+                    };
+                    reader.readAsDataURL(file);
+
+                    // Display the extracted text
+                    extractedText.textContent = data.text || 'No text found in image';
+                    console.log('Text displayed, length:', data.text?.length || 0);
+
+                    // Hide loading and show results
+                    loadingMessage.classList.add('hidden');
+                    resultContainer.classList.remove('hidden');
+
+                    // Parse medicine text with Groq
+                    parseText(data.text);
+                } else {
+                    throw new Error(data.error || 'Failed to extract text');
+                }
+            } catch (error) {
+                console.error('Extraction error:', error);
+                loadingMessage.classList.add('hidden');
+                alert('Error: ' + error.message);
+            }
+        });
+
+        function copyText() {
+            const text = extractedText.textContent;
+            if (!text || text === 'No text found in image') {
+                alert('No text to copy');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy text: ' + err.message);
+            });
+        }
+
+        async function parseText(text) {
+            if (!text || text === 'No text found in image') {
+                return;
+            }
+
+            console.log('Parsing medicine text...');
+            parsedData.innerHTML = '<div class="parsing-status">🔄 Analyzing with Groq AI...</div>';
+            parsedSection.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/parse-medicine-text', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+                console.log('Parse result:', result);
+
+                if (result.success) {
+                    const parsedJson = JSON.parse(result.parsed_data);
+                    displayParsedData(parsedJson);
+                    
+                    // Search drugs in database
+                    if (parsedJson.names && parsedJson.names.length > 0) {
+                        searchDrugsInDatabase(parsedJson.names);
+                    }
+                } else {
+                    parsedData.innerHTML = '<div class="parsing-status">❌ ' + result.error + '</div>';
+                }
+            } catch (error) {
+                console.error('Parse error:', error);
+                parsedData.innerHTML = '<div class="parsing-status">❌ Failed to parse: ' + error.message + '</div>';
+            }
+        }
+
+        function displayParsedData(data) {
+            console.log('Displaying parsed data:', data);
+            
+            let html = '';
+
+            if (data.names && data.names.length > 0) {
+                html += `
+                    <div class="data-field">
+                        <h3>💊 Medicine Names</h3>
+                        <ul>
+                            ${data.names.map(name => `<li>${name}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (data.dosage && data.dosage.length > 0) {
+                html += `
+                    <div class="data-field">
+                        <h3>⚖️ Dosage</h3>
+                        <ul>
+                            ${data.dosage.map(dose => `<li>${dose}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (data.caution_notes && data.caution_notes.length > 0) {
+                html += `
+                    <div class="data-field">
+                        <h3>⚠️ Caution Notes</h3>
+                        <ul>
+                            ${data.caution_notes.map(note => `<li>${note}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (data.composition && data.composition.length > 0) {
+                html += `
+                    <div class="data-field">
+                        <h3>🧪 Composition</h3>
+                        <ul>
+                            ${data.composition.map(comp => `<li>${comp}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (data.manufacturer) {
+                html += `
+                    <div class="data-field">
+                        <h3>🏭 Manufacturer</h3>
+                        <p>${data.manufacturer}</p>
+                    </div>
+                `;
+            }
+
+            if (html === '') {
+                html = '<div class="parsing-status">No structured data extracted</div>';
+            }
+
+            parsedData.innerHTML = html;
+        }
+
+        async function searchDrugsInDatabase(names) {
+            console.log('Searching drugs in database:', names);
+            dbSearchResults.innerHTML = '<div class="parsing-status">🔄 Searching drug database...</div>';
+            dbSearchSection.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/search-drugs-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ names: names })
+                });
+
+                const result = await response.json();
+                console.log('Database search result:', result);
+
+                if (result.success) {
+                    displayDrugSearchResults(result.results);
+                } else {
+                    dbSearchResults.innerHTML = '<div class="parsing-status">❌ ' + result.error + '</div>';
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                dbSearchResults.innerHTML = '<div class="parsing-status">❌ Search failed: ' + error.message + '</div>';
+            }
+        }
+
+        function displayDrugSearchResults(results) {
+            console.log('Displaying drug search results:', results);
+            
+            let html = '';
+
+            results.forEach((result, index) => {
+                if (result.found) {
+                    html += `
+                        <div class="drug-card" onclick="selectDrug(${index})" data-drug='${JSON.stringify(result)}'>
+                            <h3>💊 ${result.drug_name}</h3>
+                            <div class="generic">Generic: ${result.generic_name || 'N/A'}</div>
+                            <div class="info">
+                                <strong>Class:</strong> ${result.pharm_class}<br>
+                                <strong>Description:</strong> ${result.description || 'No description available'}<br>
+                                <strong>Known Interactions:</strong> ${result.interactions_count} drugs
+                            </div>
+                        </div>
+                    `;
+                } else if (result.match_type === 'fuzzy' && result.suggestions && result.suggestions.length > 0) {
+                    // Show suggestions
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <p style="color: #856404; margin-bottom: 10px;">
+                                ❓ "${result.search_name}" not found, but here are similar drugs:
+                            </p>
+                            ${result.suggestions.map((sugg, suggIdx) => `
+                                <div class="drug-card" 
+                                     onclick="selectDrug(${index}, ${suggIdx})" 
+                                     style="margin-bottom: 10px; background: white;"
+                                     data-drug='${JSON.stringify({...sugg, match_type: "fuzzy", search_name: result.search_name, suggestion_index: suggIdx})}'>
+                                    <h3>💊 ${sugg.drug_name}</h3>
+                                    <div class="generic">Generic: ${sugg.generic_name || 'N/A'}</div>
+                                    <div class="info">
+                                        <strong>Class:</strong> ${sugg.pharm_class}<br>
+                                        <strong>Description:</strong> ${sugg.description || 'No description available'}<br>
+                                        <strong>Known Interactions:</strong> ${sugg.interactions_count} drugs
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="drug-not-found">
+                            ❌ "${result.search_name}" not found in database and no similar drugs found
+                        </div>
+                    `;
+                }
+            });
+
+            if (html === '') {
+                html = '<div class="parsing-status">No drugs found</div>';
+            }
+
+            dbSearchResults.innerHTML = html;
+        }
+
+        function selectDrug(index, suggestionIndex = null) {
+            // Get the selected card
+            let selectedCard;
+            if (suggestionIndex !== null) {
+                // For suggestions, find by data attribute
+                const cards = document.querySelectorAll(`[data-drug*='"suggestion_index":${suggestionIndex}']`);
+                selectedCard = cards[0];
+            } else {
+                const cards = document.querySelectorAll('.drug-card');
+                selectedCard = cards[index];
+            }
+
+            // Remove previous selection
+            document.querySelectorAll('.drug-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Select clicked card
+            selectedCard.classList.add('selected');
+
+            // Get drug data
+            const drugData = JSON.parse(selectedCard.getAttribute('data-drug'));
+            selectedDrug = drugData;
+
+            // Update display
+            const displayText = drugData.match_type === 'fuzzy' 
+                ? `${drugData.drug_name} (${drugData.generic_name}) - Similar to "${drugData.search_name}"`
+                : `${drugData.drug_name} (${drugData.generic_name})`;
+            selectedDrugName.textContent = displayText;
+
+            // Show interaction section
+            interactionSection.classList.remove('hidden');
+
+            // Enable check button if current drug is entered
+            if (currentDrugInput.value.trim()) {
+                checkInteractionBtn.disabled = false;
+            }
+
+            console.log('Selected drug:', selectedDrug);
+        }
+
+        // Enable check button when both drugs are selected
+        currentDrugInput.addEventListener('input', () => {
+            if (selectedDrug && currentDrugInput.value.trim()) {
+                checkInteractionBtn.disabled = false;
+            } else {
+                checkInteractionBtn.disabled = true;
+            }
+        });
+
+        checkInteractionBtn.addEventListener('click', async () => {
+            if (!selectedDrug || !currentDrugInput.value.trim()) {
+                alert('Please select a drug from the image and enter your current medication');
+                return;
+            }
+
+            const currentDrug = currentDrugInput.value.trim();
+            console.log('Checking interaction:', selectedDrug.drug_name, 'vs', currentDrug);
+
+            checkInteractionBtn.disabled = true;
+            checkInteractionBtn.textContent = 'Checking...';
+            interactionResult.innerHTML = '<div class="parsing-status">🔄 Analyzing interaction...</div>';
+
+            try {
+                const response = await fetch('/check-interaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        current_med: currentDrug,
+                        new_drug: selectedDrug.drug_name
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Interaction result:', result);
+
+                displayInteractionResult(result);
+
+                checkInteractionBtn.disabled = false;
+                checkInteractionBtn.textContent = 'Check Interaction';
+            } catch (error) {
+                console.error('Interaction check error:', error);
+                interactionResult.innerHTML = '<div class="parsing-status">❌ Failed to check interaction: ' + error.message + '</div>';
+                checkInteractionBtn.disabled = false;
+                checkInteractionBtn.textContent = 'Check Interaction';
+            }
+        });
+
+        function displayInteractionResult(result) {
+            let html = '';
+
+            if (result.interaction_found) {
+                const ai = result.ai_analysis;
+                html = `
+                    <div class="interaction-result found">
+                        <h3>⚠️ Interaction Detected</h3>
+                        <span class="severity-badge severity-${ai.severity}">${ai.severity} SEVERITY</span>
+                        
+                        <div class="interaction-details">
+                            <h3>🔬 Mechanism:</h3>
+                            <p>${ai.mechanism}</p>
+                            
+                            <h3>⚕️ Clinical Impact:</h3>
+                            <p>${ai.clinical_impact}</p>
+                            
+                            <h3>⚠️ Risk Assessment:</h3>
+                            <p>${ai.risk}</p>
+                            
+                            <h3>💡 Recommended Action:</h3>
+                            <p>${ai.action}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="interaction-result not-found">
+                        <h3>✅ ${result.message}</h3>
+                        <p style="margin-top: 10px; color: #495057;">
+                            ${result.message.includes('not found') ? 
+                                'This medication may not be in our database.' : 
+                                'These medications can generally be taken together, but always consult your healthcare provider.'}
+                        </p>
+                    </div>
+                `;
+            }
+
+            interactionResult.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
