@@ -86,8 +86,17 @@ def load_drug_database(filename: str = "drugbank_comprehensive.json") -> List[Di
         return []
 
 
-# Load database at startup
-DRUG_DB = load_drug_database()
+# Lazy-load database on first use (to save memory on startup)
+_DRUG_DB_CACHE = None
+
+def get_drug_database() -> List[Dict]:
+    """Get drug database, loading on first use (lazy loading to save startup memory)"""
+    global _DRUG_DB_CACHE
+    if _DRUG_DB_CACHE is None:
+        print("Loading drug database...")
+        _DRUG_DB_CACHE = load_drug_database()
+        print(f"✅ Loaded {len(_DRUG_DB_CACHE)} drugs")
+    return _DRUG_DB_CACHE
 
 # ============================================================================
 # NORMALIZATION & LOOKUP LOGIC
@@ -98,13 +107,10 @@ def normalize(name: str) -> str:
     return name.strip().lower().replace(" ", "")
 
 
-def find_drug_in_db(drug_name: str, db: List[Dict]) -> Optional[Dict]:
-    """
-    Find drug in database with regex fuzzy matching
-    Handles generic names, brand names, variations
-    """
-    if not drug_name:
-        return None
+def find_drug_in_db(drug_name: str, db: Optional[List[Dict]] = None) -> Optional[Dict]:
+    """Find drug in database with regex fuzzy matching"""
+    if db is None:
+        db = get_drug_database()
     
     normalized_input = normalize(drug_name)
     
@@ -142,7 +148,7 @@ def find_interaction(current_med: str, new_drug: str) -> Optional[str]:
     Returns interaction description if found
     """
     # Search in database
-    drug_a = find_drug_in_db(current_med, DRUG_DB)
+    drug_a = find_drug_in_db(current_med)
     
     if not drug_a:
         return None
@@ -368,8 +374,9 @@ def check_drug_interaction(current_med: str, new_drug: str) -> InteractionRespon
     # Edge case: drug not found
     if not interaction_text:
         # Verify if drugs exist in database
-        drug_a = find_drug_in_db(current_med, DRUG_DB)
-        drug_b = find_drug_in_db(new_drug, DRUG_DB)
+        db = get_drug_database()
+        drug_a = find_drug_in_db(current_med, db)
+        drug_b = find_drug_in_db(new_drug, db)
         
         if not drug_a:
             return InteractionResponse(
@@ -456,8 +463,9 @@ async def search_drugs(q: str):
     
     q_normalized = normalize(q)
     results = []
+    db = get_drug_database()
     
-    for drug in DRUG_DB[:100]:  # Limit to first 100
+    for drug in db[:100]:  # Limit to first 100
         names = [drug.get("drugName", ""), drug.get("genericName", "")]
         names = [n for n in names if n]
         
@@ -481,8 +489,9 @@ async def get_all_drug_names():
     """Get all available drug names and generic names for autocomplete"""
     drug_names = []
     seen = set()
+    db = get_drug_database()
     
-    for drug in DRUG_DB:
+    for drug in db:
         drug_name = drug.get("drugName", "").strip()
         generic_name = drug.get("genericName", "").strip()
         
@@ -517,8 +526,8 @@ async def get_drug_data(name: str):
 @app.get("/drugs-visual-info")
 async def get_drugs_visual_info(drug1: str, drug2: str):
     """Get visual information for two drugs to display side-by-side"""
-    drug_a = find_drug_in_db(drug1, DRUG_DB)
-    drug_b = find_drug_in_db(drug2, DRUG_DB)
+    drug_a = find_drug_in_db(drug1)
+    drug_b = find_drug_in_db(drug2)
     
     if not drug_a:
         raise HTTPException(status_code=404, detail=f"Drug '{drug1}' not found")
@@ -552,8 +561,8 @@ async def get_stats():
     """Get database statistics"""
     return {
         "database": "drugbank_comprehensive.json",
-        "total_drugs": len(DRUG_DB),
-        "unique_drug_names": len(set([d.get("drugName", "") for d in DRUG_DB]))
+        "total_drugs": len(get_drug_database()),
+        "unique_drug_names": len(set([d.get("drugName", "") for d in get_drug_database()]))
     }
 
 
@@ -720,9 +729,10 @@ async def search_drugs_batch(request: dict):
         print(f"Searching for {len(drug_names)} drugs: {drug_names}")
         
         results = []
+        db = get_drug_database()
         for name in drug_names:
             # First try exact match
-            drug = find_drug_in_db(name, DRUG_DB)
+            drug = find_drug_in_db(name, db)
             
             if drug:
                 results.append({
@@ -737,7 +747,7 @@ async def search_drugs_batch(request: dict):
                 })
             else:
                 # Try fuzzy/prefix matching
-                fuzzy_matches = find_fuzzy_drug_matches(name, DRUG_DB)
+                fuzzy_matches = find_fuzzy_drug_matches(name, db)
                 
                 if fuzzy_matches:
                     results.append({
@@ -769,17 +779,16 @@ async def search_drugs_batch(request: dict):
         }
 
 
-def find_fuzzy_drug_matches(query: str, drug_db: list, limit: int = 5) -> list:
-    """
-    Find drugs matching by prefix and similarity
-    Returns top N matches sorted by similarity score
-    """
+def find_fuzzy_drug_matches(query: str, drug_db: Optional[list] = None, limit: int = 5) -> list:
+    """Find drugs matching by prefix and similarity"""
+    if drug_db is None:
+        drug_db = get_drug_database()
     query_norm = normalize(query).lower()
     query_words = query_norm.split()
     
     matches = []
     
-    for drug in drug_db:
+    for drug in get_drug_database():
         drug_name = drug.get("drugName", "").lower()
         generic_name = drug.get("genericName", "").lower()
         
